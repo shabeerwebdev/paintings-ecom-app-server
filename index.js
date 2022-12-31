@@ -35,8 +35,8 @@ app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
 app.use("/api/carts", cartRoute);
 app.use("/api/orders", orderRoute);
-// app.use("/api/checkout", stripeRoute);
-app.use("/api/checkout", razorPayRoute);
+app.use("/api/checkout", stripeRoute);
+// app.use("/api/checkout", razorPayRoute);
 
 app.listen(PORT, () => {
   console.log(`Backend server is running on port ${PORT}`);
