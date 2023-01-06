@@ -4,6 +4,7 @@ const KEY = process.env.STRIPE_SECRET_KEY;
 const stripe = require("stripe")(KEY);
 const CLIENT_URL = process.env.CLIENT_URL;
 const express = require("express");
+const bodyParser = require("body-parser");
 
 // router.post("/create-checkout-session", async (req, res) => {
 //   console.log(req.body);
@@ -110,16 +111,47 @@ router.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-router.post("/retrieve-checkout-session", async (req, res) => {
-  try {
-    const sessionRetrieve = await stripe.checkout.sessions.retrieve(
-      req.sessionId
-    );
-    res.json(sessionRetrieve);
-  } catch (err) {
-    res.status(500).json(err);
+router.post(
+  "/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res) => {
+    let signingSecret =
+      "whsec_54eb3973f7b8bb579cc616945ddec271bd2a758a97ed83fce2f9c5475d1c7d6f";
+    const payload = req.body;
+    const sig = req.headers["stripe-signature"];
+
+    console.log(req.body);
+
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(payload, sig, signingSecret);
+    } catch (err) {
+      console.log(err, err.message);
+      return res.status(400).json({ success: false });
+    }
+
+    console.log(event);
+    console.log(event.data.object);
+    console.log(event.data.object.id);
+    res.json({
+      success: true,
+    });
   }
-});
+);
+
+// router.post("/retrieve-checkout-session", async (req, res) => {
+//   console.log(req.body);
+//   try {
+//     const sessionRetrieve = await stripe.checkout.sessions.retrieve(
+//       req.sessionId
+//     );
+//     res.json(sessionRetrieve);
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json(err);
+//   }
+// });
 
 // router.post(
 //   "/create-order",
