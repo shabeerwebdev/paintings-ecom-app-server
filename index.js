@@ -41,3 +41,5 @@ app.use("/api/checkout", stripeRoute);
 app.listen(PORT, () => {
   console.log(`Backend server is running on port ${PORT}`);
 });
+
+// export PATH=/opt/homebrew/bin:$PATH
