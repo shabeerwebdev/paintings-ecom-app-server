@@ -1,34 +1,38 @@
 const mongoose = require("mongoose");
 
-const OrderSchema = new mongoose.Schema(
+const orderSchema = new mongoose.Schema(
   {
     // userId: { type: String, required: true },
-    userId: { type: String },
-    isPaid: { type: Boolean }, //new schema
-    razorpay: {
-      orderId: String,
-      paymentId: String,
-      signature: String,
-    }, // new schema
-
+    userId: { type: String, required: true },
+    customerId: { type: String },
     products: [
       {
-        productId: {
+        id: {
           type: String,
         },
-        quantity: {
-          type: Number,
-          default: 1,
+        title: {
+          type: String,
+        },
+        artist: {
+          type: String,
+        },
+        price: {
+          type: String,
+        },
+        image: {
+          type: String,
+        },
+        description: {
+          type: String,
         },
       },
     ],
-    // amount: { type: Number, required: true },
-    amount: { type: Number },
-    // address: { type: Object, required: true },
-    address: { type: Object },
-    status: { type: String, default: "pending" },
+    total: { type: Number },
+    payment_status: { type: String, default: "pending" },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Order", OrderSchema);
+const Order = mongoose.model("Order", orderSchema);
+
+exports.Order = Order;

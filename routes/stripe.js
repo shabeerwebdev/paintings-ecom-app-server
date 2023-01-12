@@ -1,91 +1,31 @@
 const router = require("express").Router();
+require("dotenv").config();
 const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const CLIENT_URL = process.env.CLIENT_URL;
 const express = require("express");
 const bodyParser = require("body-parser");
+const { Order } = require("../models/Order");
+const User = require("../models/User");
+const Product = require("../models/Product");
+// create order
 
-// router.post("/create-checkout-session", async (req, res) => {
-//   console.log(req.body);
-//   const { paintings } = req.body;
-//   const lineItems = await Promise
-//     .all
-//     // paintings.map(async (product) => {
-//     //   const item = await strapi
-//     //     .service("api::painting.painting")
-//     //     .findOne(product._id);
-//     //   return {
-//     //     price_data: {
-//     //       currency: "inr",
-//     //       product_data: {
-//     //         name: item.title,
-//     //       },
-//     //       unit_amount: item.price * 100,
-//     //     },
-//     //     quantity: 1,
-//     //   };
-//     // })
-//     ();
-//   try {
-//     const session = await stripe.checkout.sessions.create({
-//       line_items: lineItems,
-//       mode: "payment",
-//       success_url: `${CLIENT_URL}/success.html`,
-//       cancel_url: `${CLIENT_URL}/canceled.html`,
-//     });
-
-//     // await strapi.service("api::order.order").create({
-//     //   data: {
-//     //     paintings,
-//     //     stripeId: session.id,
-//     //   },
-//     // });
-
-//     return {
-//       stripeSession: session,
-//     };
-//   } catch (err) {
-//     err.res.status = 500;
-//     console.log(err);
-//     // res.redirect(303, session.url);
-//     return err;
-//   }
-// });
-
-// webhooks
-
-// server.js
-//
-// Use this sample code to handle webhook events in your integration.
-//
-// 1) Paste this code into a new file (server.js)
-//
-// 2) Install dependencies
-//   npm install stripe
-//   npm install express
-//
-// 3) Run the server on http://localhost:4242
-//   node server.js
-
-// const stripe = require("stripe");
-
-// This is your Stripe CLI webhook secret for testing your endpoint locally.
-let endpointSecret;
-endpointSecret =
-  "whsec_54eb3973f7b8bb579cc616945ddec271bd2a758a97ed83fce2f9c5475d1c7d6f";
+let ids = [];
+let usrId;
 
 router.post("/create-checkout-session", async (req, res) => {
-  const { products } = req.body;
+  ids = req.body.products.map((item) => item);
+  usrId = req.body.userId;
 
   const customer = await stripe.customers.create({
     email: req.body.email,
     metadata: {
-      userID: req.body.userId,
-      cart: JSON.stringify(products.toString()),
+      userId: req.body.userId,
+      // cart: JSON.stringify(...req.body.products),
     },
   });
 
-  const lineItems = products.map((item) => {
+  const lineItems = req.body.products.map((item) => {
     return {
       price_data: {
         currency: "inr",
@@ -111,113 +51,102 @@ router.post("/create-checkout-session", async (req, res) => {
     success_url: "http://localhost:3000/success",
     cancel_url: "http://localhost:3000/cancel",
   });
-  console.log(session);
-  // res.status(200).json({ id: session.id });
   res.status(200).json(session);
 });
 
-// router.post(
-//   "/webhook",
-//   express.raw({ type: "application/json" }),
-//   async (req, res) => {
-//     let signingSecret =
-//       "whsec_54eb3973f7b8bb579cc616945ddec271bd2a758a97ed83fce2f9c5475d1c7d6f";
+const createOrder = async (customer, data) => {
+  const Items = JSON.parse(customer.metadata.cart);
 
-//     const payload = req.rawBody || req.body;
-//     const stripeSignature = req.headers["stripe-signature"];
-//     if (stripeSignature == null) {
-//       throw new UnknownError("No stripe signature found!");
-//     }
+  const newOrder = new Order({
+    userId: customer.metadata.userId,
+    customerId: data.customer,
+    paymentIntentId: data.payment_intent,
+    products: Items,
+    total: data.amount_total,
+    payment_status: data.payment_status,
+  });
 
-//     // console.log(req.body);
-
-//     let data;
-//     let eventType;
-
-//     if (signingSecret) {
-//       let event;
-//       try {
-//         event = stripe.webhooks.constructEvent(
-//           payload,
-//           stripeSignature,
-//           signingSecret
-//         );
-//       } catch (err) {
-//         console.log(err, err.message);
-//         return res.status(400).json({ success: false });
-//       }
-//       console.log(event.type);
-//       console.log(event.data.object);
-//       console.log(event.data.object.id);
-
-//       data = event.data.object;
-//       eventType = event.type;
-//     } else {
-//       data = req.body.data.object;
-//       eventType = req.body.type;
-//     }
-
-//     // handle the event
-
-//     if (eventType === "checkout.session.completed") {
-//     }
-//     res.json({
-//       success: true,
-//     });
-//   }
-// );
-
-// router.post("/retrieve-checkout-session", async (req, res) => {
-//   console.log(req.body);
-//   try {
-//     const sessionRetrieve = await stripe.checkout.sessions.retrieve(
-//       req.sessionId
-//     );
-//     res.json(sessionRetrieve);
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json(err);
-//   }
-// });
+  try {
+    const savedOrder = await newOrder.save();
+    // console.log("processed order:", savedOrder);
+  } catch (err) {
+    // console.log(err);
+  }
+};
 
 router.post(
   "/webhook",
-  express.raw({ type: "application/json" }),
-  (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    console.log(sig, "signature");
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res, next) => {
     let data;
     let eventType;
 
+    const payload = req.body;
+
+    const reqUserId = JSON.parse(payload).data.object.metadata.userId;
+
+    const sig = req.headers["stripe-signature"];
+    const endpointSecret =
+      "whsec_54eb3973f7b8bb579cc616945ddec271bd2a758a97ed83fce2f9c5475d1c7d6f";
+
+    let event;
     if (endpointSecret) {
-      let event;
+      // console.log("first stage");
       try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-        console.log("verified success");
+        event = stripe.webhooks.constructEvent(payload, sig, endpointSecret);
+        // console.log("verified success");
       } catch (err) {
         res.status(400).send(`Webhook Error: ${err.message}`);
-        console.log(err.message, "verify failed");
+        // console.log(err.message, "verify failed");
         return;
       }
       data = event.data.object;
       eventType = event.type;
+      // console.log(data, "data");
     } else {
-      // console.log(req.body);
       data = req.body.data.object;
       eventType = req.body.type;
+      // console.log(eventType, "eventType");
     }
 
     // handleEvent event
     if (eventType === "checkout.session.completed") {
-      stripe.customers
-        .retrieve(data.customer)
-        .then((customer) => {
-          console.log(customer, data, ":data");
-        })
-        .catch((er) => console.log(er));
+      console.log(usrId, "indapa");
+
+      const user = await User.findById(usrId);
+      await user.updateOne({ $push: { prchdPrd: ids } });
+
+      ids.forEach(async (item) => {
+        const updateSoldCount = await Product.findById(item._id);
+        // console.log(updateSoldCountOfArtist);
+        await updateSoldCount.updateOne({ $inc: { soldCount: 1 } });
+        await User.updateOne(
+          { username: updateSoldCount.drawnBy },
+          { $inc: { soldCount: 1 } }
+        ).collation({
+          locale: "en",
+          strength: 2,
+        });
+
+        // console.log(updateSoldCount);
+      });
+
+      // const updateSoldCount = ids.forEach(async (id) => {
+      //   await Product.updateOne({ _id: id }, { $inc: { soldCount: 1 } });
+      // });
+
+      // console.log(updateSoldCount, "soldmame");
+
+      // stripe.customers
+      //   .retrieve(data.customer)
+      //   .then((customer) => {
+      //     createOrder(customer, data);
+      //   })
+      //   .catch((er) => console.log(er.message));
     }
     // Return a 200 res to acknowledge receipt of the event
-    res.send().end();
+    console.log(res);
+    res.send("Hello baby").end();
   }
 );
 

@@ -26,8 +26,18 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// app.use(express.json());
+// app.use(express.json({ extended: false }));
+
+app.use((req, res, next) => {
+  if (req.originalUrl.includes("/webhook")) {
+    next();
+  } else {
+    express.json({ limit: "1mb" })(req, res, next);
+  }
+});
+
 app.use(cors());
-app.use(express.json());
 app.use(morgan("common"));
 app.use(helmet());
 app.use("/api/auth", authRoute);

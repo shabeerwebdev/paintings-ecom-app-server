@@ -53,6 +53,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isArtist: {
+      type: Boolean,
+      default: false,
+    },
     desc: {
       type: String,
       max: 50,
@@ -70,6 +74,9 @@ const UserSchema = new mongoose.Schema(
       enum: [1, 2, 3],
     },
     img: { type: String },
+    soldCount: {
+      type: Number,
+    },
   },
   { timestamps: true }
 );
