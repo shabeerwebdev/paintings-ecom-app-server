@@ -86,8 +86,7 @@ router.post(
     const reqUserId = JSON.parse(payload).data.object.metadata.userId;
 
     const sig = req.headers["stripe-signature"];
-    const endpointSecret =
-      "whsec_54eb3973f7b8bb579cc616945ddec271bd2a758a97ed83fce2f9c5475d1c7d6f";
+    const endpointSecret = "whsec_gENvr4rEiXhBYzpp5ZlZ0ujmYGCI8A2P";
 
     let event;
     if (endpointSecret) {
