@@ -1,3 +1,4 @@
+const { query } = require("express");
 const Product = require("../models/Product");
 const {
   verifyToken,
@@ -58,25 +59,66 @@ router.get("/find/:id", async (req, res) => {
 
 //GET ALL PRODUCTS
 router.get("/", async (req, res) => {
-  const qNew = req.query.new;
-  const qCategory = req.query.category;
-  try {
-    let products;
+  // const qNew = req.query.new;
+  // const qCategory = req.query.category;
+  // try {
+  //   let products;
 
-    if (qNew) {
-      products = await Product.find().sort({ createdAt: -1 }).limit(1);
-    } else if (qCategory) {
-      products = await Product.find({
-        categories: {
-          $in: [qCategory],
-        },
-      });
+  //   if (qNew) {
+  //     products = await Product.find().sort({ createdAt: -1 }).limit(1);
+  //   } else if (qCategory) {
+  //     products = await Product.find({
+  //       categories: {
+  //         $in: [qCategory],
+  //       },
+  //     });
+  //   } else {
+  //     products = await Product.find();
+  //   }
+
+  console.log(req.query.limit);
+  console.log(req.query.sort);
+  try {
+    const limit = parseInt(req.query.limit) || 0;
+    let sort = req.query.sort || "price";
+
+    req.query.sort ? (sort = req.query.sort.split(",")) : (sort = [sort]);
+    let sortBy = {};
+    if (sort[1]) {
+      sortBy[sort[0]] = sort[1];
     } else {
-      products = await Product.find();
+      sortBy[sort[0]] = "asc";
     }
 
-    res.status(200).json(products);
+    // find users with received filter
+    // const users = await User.find({ name: { $regex: search, $options: "i" } })
+    // { drawnBy: query }
+    const products = await Product.find()
+      .collation({
+        locale: "en",
+        strength: 2,
+      })
+      // .where("genre")
+      // .in([...genre])
+
+      .sort(sortBy)
+      // .skip(page * limit)
+      .limit(limit);
+
+    const response = {
+      error: false,
+      // total,
+      // page: page + 1,
+      // limit,
+      // genres: genreOptions,
+      products,
+    };
+
+    // console.log(response, "response");
+
+    res.status(200).json(response);
   } catch (err) {
+    console.log(err);
     res.status(500).json(err);
   }
 });
