@@ -48,8 +48,8 @@ router.post("/create-checkout-session", async (req, res) => {
     line_items: lineItems,
     customer: customer.id,
     mode: "payment",
-    success_url: "http://localhost:3000/success",
-    cancel_url: "http://localhost:3000/cancel",
+    success_url: "https://buymyart.vercel.app/myprofile",
+    cancel_url: "https://buymyart.vercel.app/myprofile",
   });
   res.status(200).json(session);
 });
